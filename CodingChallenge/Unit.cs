@@ -15,6 +15,7 @@ public class Unit
     int indexOfNextEvent;
     double timeUntilNextEvent;
     static CancellationTokenSource tokenSource = null;
+    bool eventRunning = false;
     public Unit()
 	{
         Controller.units.Add(this);
@@ -32,8 +33,12 @@ public class Unit
     public void ScheduleEvents(ScheduledEvent scheduledEvent)
     {
         scheduledEvents.Add(scheduledEvent);
-        indexOfNextEvent = NextEvent();
-        TimeBeforeExecuteNextEvent();
+        if (eventRunning == false)
+        {
+            indexOfNextEvent = NextEvent();
+            TimeBeforeExecuteNextEvent();
+        }
+        
     }
 
     public List<ScheduledEvent> GetScheduledEventsOnUnit()
@@ -62,8 +67,9 @@ public class Unit
             {
                 if (DateTime.Compare(dateTime, e.eventTime) > 0)
                 {
+                    dateTime = e.eventTime;
                     eventindex = index;
-                    if (tokenSource != null)
+                    if (tokenSource != null && indexOfNextEvent != eventindex)
                     {
                         tokenSource.Cancel();
                     }
@@ -81,13 +87,14 @@ public class Unit
   
     void TimeBeforeExecuteNextEvent()
     {
-        if (indexOfNextEvent >= 0)
+        if (indexOfNextEvent >= 0 && Controller.units.Count >0)
         {
             timeUntilNextEvent = (scheduledEvents[indexOfNextEvent].eventTime - DateTime.Now).TotalSeconds;
             ExecuteScheduledEvent();
         }
         else
         {
+            Debug.WriteLine("No New Event");
             return;
         }
     }
@@ -95,6 +102,7 @@ public class Unit
 
     async void ExecuteScheduledEvent()
     {
+        eventRunning = true;
         tokenSource = new CancellationTokenSource();
         var token = tokenSource.Token;
         await Task.Run(() => AsyncEventExecutor((int)timeUntilNextEvent, token));
@@ -107,15 +115,19 @@ public class Unit
             if (token.IsCancellationRequested)
             {
                 Debug.WriteLine("Thread Cancelled");
-
+                eventRunning = false;
                 return;
             }
             Thread.Sleep(100);
             timeOfStart += 0.1f;
         }
         Debug.WriteLine("Thread Completed");
-        Controller.units[indexOfNextEvent].scheduledEvents[0].ExecuteEvent();
-        Controller.units.RemoveAt(indexOfNextEvent);
+        Controller.units[0].scheduledEvents[indexOfNextEvent].ExecuteEvent();
+        Controller.units[0].scheduledEvents.RemoveAt(indexOfNextEvent);
+        eventRunning = false;
+
+        indexOfNextEvent = NextEvent();
+        TimeBeforeExecuteNextEvent();
 
 
     }
