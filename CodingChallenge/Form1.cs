@@ -28,8 +28,8 @@ namespace CodingChallenge
             testbutton.Size = new Size(100, 100);
             testbutton.Visible = true;
             testbutton.BringToFront();
-            testbutton.Click += Testbutton_Click;
-            this.Controls.Add(testbutton);
+            testbutton.Click += ChangeThermostatTemp;
+            Controls.Add(testbutton);
 
             Button testbutton2 = new Button();
             testbutton2.Text = "Schedule Thermostat Change";
@@ -37,14 +37,12 @@ namespace CodingChallenge
             testbutton2.Size = new Size(100, 100);
             testbutton2.Visible = true;
             testbutton2.BringToFront();
-            testbutton2.Click += Testbutton_Click2;
-            this.Controls.Add(testbutton2);
+            testbutton2.Click += ScheduleChangeThermostatTemp;
+            Controls.Add(testbutton2);
 
           
             numericUpDown1 = new NumericUpDown();
-
             numericUpDown1.Dock = System.Windows.Forms.DockStyle.Top;
-
             numericUpDown1.Value = 0;
             numericUpDown1.Maximum = 100;
             numericUpDown1.Minimum = 0;
@@ -64,26 +62,18 @@ namespace CodingChallenge
 
         }
 
-        private void Testbutton_Click(object sender, EventArgs e)
+        private void ChangeThermostatTemp(object sender, EventArgs e)
         {
             Action method;
-            method = () => PrintSomething2();
             Controller.units[0].SetValue((float)numericUpDown1.Value);
-            Debug.WriteLine("New temp on thermostat " + Controller.units[0].GetValue());
          
         }
-        private void Testbutton_Click2(object sender, EventArgs e)
+        private void ScheduleChangeThermostatTemp(object sender, EventArgs e)
         {
             Action method;
             method = () => Controller.units[0].SetValue((float)numericUpDown1.Value);
             Controller.units[0].ScheduleEvents(new ScheduledEvent(dateTimePicker1.Value, method));
-            Debug.WriteLine("Amount of stored Events " + Controller.scheduledEvents.Count);
 
-        }
-        bool PrintSomething2()
-        {
-            Debug.WriteLine("Something" + Controller.scheduledEvents.Count);
-            return true;
         }
     }
 }

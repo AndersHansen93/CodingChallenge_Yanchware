@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 /// <summary>
@@ -13,7 +14,7 @@ public class Unit
     List<ScheduledEvent> scheduledEvents = new List<ScheduledEvent>();
     int indexOfNextEvent;
     double timeUntilNextEvent;
-
+    static CancellationTokenSource tokenSource = null;
     public Unit()
 	{
         Controller.units.Add(this);
@@ -28,10 +29,6 @@ public class Unit
         this.unitName = name;
     }
 
-    public void Update()
-    {
-
-    }
     public void ScheduleEvents(ScheduledEvent scheduledEvent)
     {
         scheduledEvents.Add(scheduledEvent);
@@ -51,6 +48,7 @@ public class Unit
     public void SetValue(float v)
     {
         value = v;
+        Debug.WriteLine("Thermostat changed to " + value);
     }
 
     int NextEvent()
@@ -65,6 +63,10 @@ public class Unit
                 if (DateTime.Compare(dateTime, e.eventTime) > 0)
                 {
                     eventindex = index;
+                    if (tokenSource != null)
+                    {
+                        tokenSource.Cancel();
+                    }
                 }
                 index++;
             }
@@ -76,7 +78,7 @@ public class Unit
             return -1;
         }
     }
-    
+  
     void TimeBeforeExecuteNextEvent()
     {
         if (indexOfNextEvent >= 0)
@@ -90,9 +92,31 @@ public class Unit
         }
     }
 
+
     async void ExecuteScheduledEvent()
     {
-        await Task.Delay((int)timeUntilNextEvent);
+        tokenSource = new CancellationTokenSource();
+        var token = tokenSource.Token;
+        await Task.Run(() => AsyncEventExecutor((int)timeUntilNextEvent, token));
+    }
+    void AsyncEventExecutor(int timeUntilExecution, CancellationToken token)
+    {
+        float timeOfStart = 0;
+        while (timeOfStart < timeUntilExecution)
+        {
+            if (token.IsCancellationRequested)
+            {
+                Debug.WriteLine("Thread Cancelled");
+
+                return;
+            }
+            Thread.Sleep(100);
+            timeOfStart += 0.1f;
+        }
+        Debug.WriteLine("Thread Completed");
+        Controller.units[indexOfNextEvent].scheduledEvents[0].ExecuteEvent();
+        Controller.units.RemoveAt(indexOfNextEvent);
+
 
     }
 
